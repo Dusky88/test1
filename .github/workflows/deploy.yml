@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -34,19 +34,32 @@ jobs:
           script: |
             # Navigate to app directory
             cd /home/ubuntu/mernapp
-
+            
             # Pull latest code
             git pull origin main
-
+            
             # Install backend dependencies only
             npm install --production
-
+            
             # Restart PM2 process
             pm2 restart ecommerce || pm2 start backend/server.js --name ecommerce
             pm2 save
-
+            
             # Restart Docker containers if needed
             docker-compose restart || true
+            
+            # Fix home directory permissions for Nginx
+            sudo chmod 755 /home/ubuntu
+
+      - name: Clean old frontend build
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Remove old dist folder to avoid conflicts
+            rm -rf /home/ubuntu/mernapp/frontend/dist
 
       - name: Copy frontend build to EC2
         uses: appleboy/scp-action@master
@@ -58,6 +71,17 @@ jobs:
           target: "/home/ubuntu/mernapp/"
           strip_components: 0
           overwrite: true
+
+      - name: Fix permissions for Nginx
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Fix permissions for Nginx to access files
+            sudo chmod -R 755 /home/ubuntu/mernapp
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/mernapp
 
       - name: Deployment status
         run: echo "✅ Deployment completed successfully!"

@@ -17,4 +17,8 @@ echo "Enable & start Nginx..."
 sudo systemctl enable nginx
 sudo systemctl start nginx
 
+echo "Creating app directory..."
+sudo mkdir -p /var/www/ecommerce
+sudo chown -R ubuntu:ubuntu /var/www/ecommerce
+
 echo "Bootstrap complete ✅"
